@@ -1,0 +1,202 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  The bucket to upload lambda function
+
+Parameters:
+  NortificationMail:
+    Description: Cloud Watch Logs Alarm
+    Type: String
+
+Resources:
+  # -----------------------------------------
+  # CloudWatch Logs
+  # -----------------------------------------
+  AppLogsAlarmLogGroup:
+      Type: AWS::Logs::LogGroup
+      Properties:
+          LogGroupName: app-log-alarm
+
+  LogsAlarmLogStream:
+    Type: AWS::Logs::LogStream
+    Properties:
+      LogGroupName: !Ref AppLogsAlarmLogGroup
+      LogStreamName: app-logs-stream
+
+
+  たぶんフィルターがおかしいのでLambdaがキックされない
+
+  MetricFilterLogsAlarm:
+      Type: AWS::Logs::MetricFilter
+      DependsOn: AppLogsAlarmLogGroup
+      Properties:
+          LogGroupName: !Ref AppLogsAlarmLogGroup
+          FilterPattern: Alarm
+          MetricTransformations:
+              - MetricValue: 1
+                MetricNamespace: LogMetrics
+                MetricName: applogsAlarm
+                DefaultValue: 0
+
+  # -----------------------------------------
+  # SNS Topic for alarm lambda
+  # -----------------------------------------
+  LogsAlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: LogsAlarm
+      TopicName: LogsAlarm
+      Subscription:
+          - Endpoint:
+              !GetAtt LogsAlarmLambda.Arn
+            Protocol: lambda
+
+  LogsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn: LogsAlarmLambda
+    Properties:
+        AlarmName: LogsAlarm
+        AlarmDescription: Trigger an alarm if an Alarm is recorded
+        AlarmActions:
+          - !Ref LogsAlarmTopic
+        MetricName: logsAlarm
+        Namespace: LogMetrics
+        Period: 10
+        EvaluationPeriods: 1
+        Threshold: 0
+        Statistic: Average
+        ComparisonOperator: GreaterThanOrEqualToThreshold
+
+  TopicPermissionToLambdaInvoke:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LogsAlarmLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref LogsAlarmTopic
+
+  # -----------------------------------------
+  # Lambda started with CloudWatch Alarm
+  # -----------------------------------------
+  LogsLambdaExecutionRole:
+      Type: AWS::IAM::Role
+      Properties:
+          AssumeRolePolicyDocument:
+              Version: 2012-10-17
+              Statement:
+              - Effect: Allow
+                Principal:
+                  Service:
+                  - lambda.amazonaws.com
+                Action:
+                  - sts:AssumeRole
+          Path: "/"
+          Policies:
+            - PolicyName: cloudwatchlogswrite
+              PolicyDocument:
+                Version: 2012-10-17
+                Statement:
+                - Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:Put*
+                  - logs:Describe*
+                  - logs:filterLogEvents
+                  Resource: "*"
+                  Effect: Allow
+            - PolicyName: snspublish
+              PolicyDocument:
+                Version: 2012-10-17
+                Statement:
+                - Action:
+                  - sns:Publish
+                  Resource: "*"
+                  Effect: Allow
+
+  LogsAlarmLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: LogsAlarmLambda
+      Role: !GetAtt LogsLambdaExecutionRole.Arn
+      Runtime: python3.7
+      Timeout: 60
+      Handler: lambda_function.lambda_handler
+      CodeUri: lambda/
+      Description: The function that parform Cloud Watch Logs Alarm notrification
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref NotificationTopic
+
+  # -----------------------------------------
+  # SNS Topic for email
+  # -----------------------------------------
+  NotificationTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+          DisplayName: LogsAlarmNorticifation
+          Subscription:
+              - Endpoint:
+                  Ref: NortificationMail
+                Protocol: email
+          TopicName: LogsAlarmNorticifation
+
+  # -------------------------------------------------
+  # Test lambda function
+  # Lambda function write test data to cloudwatch logs
+  # -------------------------------------------------
+  TestLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: passrole
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+            - Action:
+              - iam:PassRole
+              - iam:GetRole
+              Resource: !Join [ "", [ "arn:aws:iam::*:role/", !Ref "AWS::StackName" ,"*"]]
+              Effect: Allow
+        - PolicyName: cloudwatchlogsPut
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+            - Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              Resource: "*"
+              Effect: Allow
+        - PolicyName: logsput
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+            - Action:
+              - logs:Describe*
+              - logs:Put*
+              Resource: "*"
+              Effect: Allow
+
+  TestLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: TestLambda
+      Role: !GetAtt TestLambdaRole.Arn
+      Runtime: python3.7
+      Timeout: 300
+      Handler: lambda_function.lambda_handler
+      CodeUri: test_lambda/
+      Environment:
+        Variables:
+          LOGS_GROUP_NAME: !Ref AppLogsAlarmLogGroup
+          LOGS_STREAM_NAME: !Ref LogsAlarmLogStream
