@@ -14,6 +14,7 @@ sns = boto3.client('sns')
 
 SNS_TOPIC_ARN = os.environ['SNS_TOPIC_ARN']
 
+MESSAGE_SUBJECT = 'Alert! Accessing an IP address not in WhiteList'
 
 def extract_sns_parameter(event):
     message = json.loads(event['Records'][0]['Sns']['Message'])
@@ -106,7 +107,7 @@ def lambda_handler(event, context):
             sns.publish(
                 TopicArn=SNS_TOPIC_ARN,
                 Message=_message,
-                Subject='Alert! Accessing an IP address not in WhiteList'
+                Subject=MESSAGE_SUBJECT
             )
 
     except Exception as e:

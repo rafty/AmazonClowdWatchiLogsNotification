@@ -8,6 +8,47 @@ Parameters:
     Description: Cloud Watch Logs Alarm
     Type: String
 
+  LogGroupName:
+    Description: Cloud Watch Logs Alarm
+    Type: String
+    #Default: app-log-alarm
+    Default: App1
+
+  LogStreamName:
+    Description: Cloud Watch Logs Alarm
+    Type: String
+    #Default: app-logs-stream
+    Default: instance-id-000001
+
+  FilterPattern:
+    Description: Cloud Watch Logs Alarm
+    Type: String
+    #Default: Error
+    Default: "[ERROR, Error, error]"
+
+  MetricName:
+    Description: Cloud Watch Logs Alarm
+    Type: String
+    #Default: applogsAlarm
+    Default: App1-logsAlarm
+
+  MetricNamespace:
+    Description: Cloud Watch Logs Alarm
+    Type: String
+    #Default: AppLogMetrics
+    Default: App1-LogMetrics
+
+  AlarmName:
+    Description: Cloud Watch Logs Alarm
+    Type: String
+    #Default: AppLogsAlarm
+    Default: App1LogsAlarm
+
+  AlarmDescription:
+    Description: Cloud Watch Logs Alarm
+    Type: String
+    Default: App1 Error alarm
+
 Resources:
   # -----------------------------------------
   # CloudWatch Logs
@@ -15,28 +56,32 @@ Resources:
   AppLogsAlarmLogGroup:
       Type: AWS::Logs::LogGroup
       Properties:
-          LogGroupName: app-log-alarm
+          #LogGroupName: app-log-alarm
+          LogGroupName: !Ref LogGroupName
 
   LogsAlarmLogStream:
     Type: AWS::Logs::LogStream
     Properties:
       LogGroupName: !Ref AppLogsAlarmLogGroup
-      LogStreamName: app-logs-stream
+      #LogStreamName: app-logs-stream
+      LogStreamName: !Ref LogStreamName
 
-
-  たぶんフィルターがおかしいのでLambdaがキックされない
 
   MetricFilterLogsAlarm:
       Type: AWS::Logs::MetricFilter
       DependsOn: AppLogsAlarmLogGroup
       Properties:
           LogGroupName: !Ref AppLogsAlarmLogGroup
-          FilterPattern: Alarm
+          #FilterPattern: "[Error, error, ERROR]"
+          #FilterPattern: Error
+          FilterPattern: !Ref FilterPattern
           MetricTransformations:
-              - MetricValue: 1
-                MetricNamespace: LogMetrics
-                MetricName: applogsAlarm
-                DefaultValue: 0
+            -  MetricValue: '1'
+               DefaultValue: '0'
+               #MetricName: applogsAlarm
+               MetricName: !Ref MetricName
+               #MetricNamespace: AppLogMetrics
+               MetricNamespace: !Ref MetricNamespace
 
   # -----------------------------------------
   # SNS Topic for alarm lambda
@@ -55,12 +100,14 @@ Resources:
     Type: AWS::CloudWatch::Alarm
     DependsOn: LogsAlarmLambda
     Properties:
-        AlarmName: LogsAlarm
-        AlarmDescription: Trigger an alarm if an Alarm is recorded
+        #AlarmName: App1LogsAlarm
+        AlarmName: !Ref AlarmName
+        #AlarmDescription: App1 Error alarm
+        AlarmDescription: !Ref AlarmDescription
         AlarmActions:
           - !Ref LogsAlarmTopic
-        MetricName: logsAlarm
-        Namespace: LogMetrics
+        MetricName: !Ref MetricName
+        Namespace: !Ref MetricNamespace
         Period: 10
         EvaluationPeriods: 1
         Threshold: 0
