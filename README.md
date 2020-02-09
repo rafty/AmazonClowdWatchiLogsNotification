@@ -1,5 +1,7 @@
 # AmazonClowdWatchiLogsNotification
 
+Email the content of AWS CloudWatch Logs event messages.
+
 1. Set variables (terminal)
 
 ```bash
@@ -8,17 +10,6 @@ $ ROLENAME=logsAlarm
 $ LAMBDAUPLOADBUCKETNAME=xxxxxxxxxxxx
 $ MAILADDRESS=xxxxx@xxx.xxx
 ```
-
-
-
-PROJECTNAME=opstools
-ROLENAME=logsAlarm
-LAMBDAUPLOADBUCKETNAME=yagita-lambda-bucket-ap-northeast-1
-MAILADDRESS=yagita.takashi@gmail.com
-
-
-
-
 
 
 2. Upload local artifacts(Lambda)
