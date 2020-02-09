@@ -11,10 +11,9 @@ logger.setLevel(logging.INFO)
 logs = boto3.client('logs')
 sns = boto3.client('sns')
 
-
 SNS_TOPIC_ARN = os.environ['SNS_TOPIC_ARN']
+MESSAGE_SUBJECT = 'Alarm! {} Error!'
 
-MESSAGE_SUBJECT = 'Alert! Accessing an IP address not in WhiteList'
 
 def extract_sns_parameter(event):
     message = json.loads(event['Records'][0]['Sns']['Message'])
@@ -62,25 +61,17 @@ def logs_window(sns_params):
     }
 
 
-def message_format(message):
-    try:
-        phrases = message.split('@@')
-    except ValueError:
-        return message
+def message_format(message, log_group_name):
+    message_form = 'Application: {}\n' \
+                   'InstanceId: {}\n' \
+                   'Message: {}\n'
 
-    phrases.insert(0, 'Alarm!!!')
-    phrases.insert(1, 'Accessing an unexpected address. Please confirm.')
-
-    try:
-        _dict = json.loads(phrases[-1])
-        phrases[-1] = json.dumps(_dict, indent=4)
-        phrases.insert(-1, '\n')
-        phrases.insert(-1, 'VPC Flow Logs:')
-
-    except Exception as e:
-        logger.warning('Json decode Error!! {}'.format(e))
-
-    return '\n'.join(phrases)
+    msg = message_form.format(
+        log_group_name,
+        message.get('logStreamName'),
+        message.get('message')
+    )
+    return msg
 
 
 def lambda_handler(event, context):
@@ -90,9 +81,10 @@ def lambda_handler(event, context):
     logs_params = extract_logs_parameter(sns_params)
     window = logs_window(sns_params)
 
+    logs_group_name = logs_params.get('logGroupName')
     try:
         response = logs.filter_log_events(
-            logGroupName=logs_params.get('logGroupName'),
+            logGroupName=logs_group_name,
             filterPattern=logs_params.get('filterPattern'),
             startTime=window.get('startTime'),
             endTime=window.get('endTime')
@@ -101,13 +93,13 @@ def lambda_handler(event, context):
         messages = response['events']
 
         for message in messages:
-            print('message: {}'.format(message))
-            _message = message_format(message['message'])
+            # print('message: {}'.format(message))
+            _message = message_format(message, logs_group_name)
 
             sns.publish(
                 TopicArn=SNS_TOPIC_ARN,
                 Message=_message,
-                Subject=MESSAGE_SUBJECT
+                Subject=MESSAGE_SUBJECT.format(logs_group_name)
             )
 
     except Exception as e:

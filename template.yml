@@ -11,37 +11,31 @@ Parameters:
   LogGroupName:
     Description: Cloud Watch Logs Alarm
     Type: String
-    #Default: app-log-alarm
     Default: App1
 
   LogStreamName:
     Description: Cloud Watch Logs Alarm
     Type: String
-    #Default: app-logs-stream
     Default: instance-id-000001
 
   FilterPattern:
     Description: Cloud Watch Logs Alarm
     Type: String
-    #Default: Error
     Default: "[ERROR, Error, error]"
 
   MetricName:
     Description: Cloud Watch Logs Alarm
     Type: String
-    #Default: applogsAlarm
     Default: App1-logsAlarm
 
   MetricNamespace:
     Description: Cloud Watch Logs Alarm
     Type: String
-    #Default: AppLogMetrics
     Default: App1-LogMetrics
 
   AlarmName:
     Description: Cloud Watch Logs Alarm
     Type: String
-    #Default: AppLogsAlarm
     Default: App1LogsAlarm
 
   AlarmDescription:
@@ -56,14 +50,12 @@ Resources:
   AppLogsAlarmLogGroup:
       Type: AWS::Logs::LogGroup
       Properties:
-          #LogGroupName: app-log-alarm
           LogGroupName: !Ref LogGroupName
 
   LogsAlarmLogStream:
     Type: AWS::Logs::LogStream
     Properties:
       LogGroupName: !Ref AppLogsAlarmLogGroup
-      #LogStreamName: app-logs-stream
       LogStreamName: !Ref LogStreamName
 
 
@@ -72,15 +64,11 @@ Resources:
       DependsOn: AppLogsAlarmLogGroup
       Properties:
           LogGroupName: !Ref AppLogsAlarmLogGroup
-          #FilterPattern: "[Error, error, ERROR]"
-          #FilterPattern: Error
           FilterPattern: !Ref FilterPattern
           MetricTransformations:
             -  MetricValue: '1'
                DefaultValue: '0'
-               #MetricName: applogsAlarm
                MetricName: !Ref MetricName
-               #MetricNamespace: AppLogMetrics
                MetricNamespace: !Ref MetricNamespace
 
   # -----------------------------------------
@@ -100,9 +88,7 @@ Resources:
     Type: AWS::CloudWatch::Alarm
     DependsOn: LogsAlarmLambda
     Properties:
-        #AlarmName: App1LogsAlarm
         AlarmName: !Ref AlarmName
-        #AlarmDescription: App1 Error alarm
         AlarmDescription: !Ref AlarmDescription
         AlarmActions:
           - !Ref LogsAlarmTopic
@@ -188,8 +174,8 @@ Resources:
           TopicName: LogsAlarmNorticifation
 
   # -------------------------------------------------
-  # Test lambda function
-  # Lambda function write test data to cloudwatch logs
+  # lambda function for Test
+  # Lambda function write test logs to cloudwatch logs
   # -------------------------------------------------
   TestLambdaRole:
     Type: AWS::IAM::Role

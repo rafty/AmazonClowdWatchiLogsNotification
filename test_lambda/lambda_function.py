@@ -52,11 +52,12 @@ def lambda_handler(event, context):
 
     try:
         for _ in range(100):
-
             # message = '2020-02-07T00:00:00.123456 Error foo bar'
-            message = '{} Error foo bar'.format(datetime.datetime.now().strftime("%Y/%m/%dT%H:%M:%S"))
+            message = '{}, Error, {}, message'.format(
+                datetime.datetime.now().strftime("%Y/%m/%dT%H:%M:%S"),
+                'App1')
             put_log_events(message)
-            time.sleep(1/4)
+            time.sleep(1/2)
 
     except Exception as e:
         logger.error(e)
