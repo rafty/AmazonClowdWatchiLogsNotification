@@ -31,3 +31,9 @@ $ aws cloudformation deploy \
     --parameter-overrides \
         NortificationMail=$MAILADDRESS
 ```
+
+4. E2E Test
+AWS Lambda function name: TestLambda
+
+When you execute Test from the AWS Lambda console, logs are output to AWS CloudWatch Logs.
+You can use whatever is the content of the Test event, so use the default settings.
