@@ -2,6 +2,7 @@
 import os
 import time
 import datetime
+import uuid
 import logging
 import boto3
 
@@ -15,50 +16,56 @@ LOGS_GROUP_NAME = os.environ['LOGS_GROUP_NAME']
 LOGS_STREAM_NAME = os.environ['LOGS_STREAM_NAME']
 
 
-def put_log_events(message):
+def create_stream():
+    stream_name = LOGS_STREAM_NAME + \
+                  '-' + \
+                  time.strftime('%y-%m-%d-%H-%M-%S') + \
+                  uuid.uuid4().hex
+    logs.create_log_stream(logGroupName=LOGS_GROUP_NAME,
+                           logStreamName=stream_name)
+    return stream_name
 
-    # events format
+
+def create_message_events():
+    message = '{}, Error, {}, {}'.format(
+        datetime.datetime.now().strftime("%Y/%m/%dT%H:%M:%S"),
+        'App1',
+        'Exception: ' + str(uuid.uuid4())
+    )
     events = [
-        dict([('timestamp', int(time.time())*1000), ('message', message)])
+        dict([('timestamp', int(time.time()) * 1000),
+              ('message', message)])
     ]
+    return events
 
-    response = logs.describe_log_streams(
-        logGroupName=LOGS_GROUP_NAME,
-        logStreamNamePrefix=LOGS_STREAM_NAME)
 
-    logger.info('describe_log_streams: {}'.format(response))
-
-    stream = response['logStreams'][0]
-    sequence_token = stream.get('uploadSequenceToken')
-
-    if sequence_token:
-        logs.put_log_events(
-            logGroupName=LOGS_GROUP_NAME,
-            logStreamName=LOGS_STREAM_NAME,
-            logEvents=events,
-            sequenceToken=sequence_token
-        )
-    else:
-        logs.put_log_events(
-            logGroupName=LOGS_GROUP_NAME,
-            logStreamName=LOGS_STREAM_NAME,
-            logEvents=events
-        )
-    logger.info('logs.put_log_event: {}'.format(events))
+def put_log_events(stream_name):
+    sequence_token = None
+    for _ in range(10):
+        events = create_message_events()
+        if sequence_token:
+            response = logs.put_log_events(
+                logGroupName=LOGS_GROUP_NAME,
+                logStreamName=stream_name,
+                logEvents=events,
+                sequenceToken=sequence_token
+            )
+        else:
+            response = logs.put_log_events(
+                logGroupName=LOGS_GROUP_NAME,
+                logStreamName=stream_name,
+                logEvents=events
+            )
+        sequence_token = response['nextSequenceToken']
+        time.sleep(1 / 2)
 
 
 def lambda_handler(event, context):
     logger.info('event: {}'.format(event))
-
     try:
-        for _ in range(100):
-            # message = '2020-02-07T00:00:00.123456 Error foo bar'
-            message = '{}, Error, {}, message'.format(
-                datetime.datetime.now().strftime("%Y/%m/%dT%H:%M:%S"),
-                'App1')
-            put_log_events(message)
-            time.sleep(1/2)
-
+        for _ in range(3):
+            stream_name = create_stream()
+            put_log_events(stream_name)
     except Exception as e:
         logger.error(e)
         raise e

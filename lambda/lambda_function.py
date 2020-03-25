@@ -63,7 +63,7 @@ def logs_window(sns_params):
 
 def message_format(message, log_group_name):
     message_form = 'Application: {}\n' \
-                   'InstanceId: {}\n' \
+                   'logStreamName: {}\n' \
                    'Message: {}\n'
 
     msg = message_form.format(

@@ -56,7 +56,7 @@ Resources:
     Type: AWS::Logs::LogStream
     Properties:
       LogGroupName: !Ref AppLogsAlarmLogGroup
-      LogStreamName: !Ref LogStreamName
+      # LogStreamName: !Ref LogStreamName
 
 
   MetricFilterLogsAlarm:
@@ -232,4 +232,5 @@ Resources:
       Environment:
         Variables:
           LOGS_GROUP_NAME: !Ref AppLogsAlarmLogGroup
-          LOGS_STREAM_NAME: !Ref LogsAlarmLogStream
+          #LOGS_STREAM_NAME: !Ref LogsAlarmLogStream
+          LOGS_STREAM_NAME: !Ref LogStreamName
