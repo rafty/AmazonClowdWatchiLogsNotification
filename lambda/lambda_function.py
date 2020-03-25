@@ -62,16 +62,16 @@ def logs_window(sns_params):
 
 
 def message_format(message, log_group_name):
-    message_form = 'Application: {}\n' \
-                   'logStreamName: {}\n' \
-                   'Message: {}\n'
-
-    msg = message_form.format(
-        log_group_name,
-        message.get('logStreamName'),
-        message.get('message')
-    )
-    return msg
+    message_form = f'logGroup: {log_group_name}\n' \
+                   f'logStreamName: {message.get("logStreamName")}\n' \
+                   '\n' \
+                   '--------------------Log----------------------\n' \
+                   f'{message.get("message")}\n' \
+                   '\n' \
+                   '------------------------------------------------\n' \
+                   'In Management Console(CloudWatchLogs),' \
+                   'see logGroup -> logStreamName.\n'
+    return message_form
 
 
 def lambda_handler(event, context):
@@ -93,7 +93,6 @@ def lambda_handler(event, context):
         messages = response['events']
 
         for message in messages:
-            # print('message: {}'.format(message))
             _message = message_format(message, logs_group_name)
 
             sns.publish(
